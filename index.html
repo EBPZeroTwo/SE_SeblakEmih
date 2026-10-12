@@ -6,6 +6,8 @@
     <title>Pesan Online - Seblak Emih</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+    <!-- Pustaka html2canvas untuk konversi elemen HTML menjadi gambar PNG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #f8fafc; color: #0f172a; -webkit-tap-highlight-color: transparent; }
         .border-line { border-color: #e2e8f0; }
@@ -14,25 +16,6 @@
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-
-        /* FORMAT CETAK TIKET PELANGGAN */
-        #area-cetak-tiket { display: none; }
-        @media print {
-            body * { visibility: hidden !important; }
-            #area-cetak-tiket, #area-cetak-tiket * { visibility: visible !important; }
-            #area-cetak-tiket {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                max-width: 80mm !important;
-                padding: 10px !important;
-                background: white !important;
-                color: black !important;
-                font-family: monospace !important;
-                display: block !important;
-            }
-        }
     </style>
 </head>
 <body class="font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden select-none bg-slate-50 text-slate-900" x-data="onlineOrderApp()" x-init="initApp()">
@@ -190,7 +173,7 @@
                         <template x-if="!isGrupMultiSelect(grupNama)">
                             <div class="grid grid-cols-2 gap-2">
                                 <template x-for="v in dapatkanOspiVarianSesuaiGrup(grupNama)" :key="v.namaOpsi">
-                                    <button type="button" @click="pilihOpsiVarian(grupNama, v)"
+                                    <button type="button" @click="pilihOspiVarian(grupNama, v)"
                                             :class="isOpsiPilihan(grupNama, v.namaOpsi) ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-50 text-slate-700 border-line hover:bg-slate-100 font-semibold'"
                                             class="p-2.5 rounded-lg text-xs border transition text-left flex justify-between items-center w-full">
                                         <span class="truncate" x-text="v.namaOpsi"></span>
@@ -369,105 +352,78 @@
     <!-- MODAL BUKTI TRANSAKSI & TIKET PENGAMBILAN PELANGGAN -->
     <div x-show="showModalTiketPelanggan" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
         <div class="bg-white border border-line w-full max-w-sm rounded-2xl p-5 space-y-4 text-slate-800 shadow-2xl max-h-[90vh] flex flex-col">
-            <div class="text-center pb-2 border-b border-line shrink-0">
-                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Pesanan Berhasil Terkirim</span>
-                <h3 class="text-lg font-black text-slate-900 mt-1">TIKET PENGAMBILAN</h3>
-                <p class="text-[10px] text-slate-400">Tunjukkan tiket ini kepada kasir saat mengambil pesanan</p>
+            
+            <!-- CONTAINER KARTU TIKET YANG AKAN DI-DOWNLOAD SEBAGAI GAMBAR -->
+            <div id="kartu-tiket-downloadable" class="bg-white p-2 rounded-xl space-y-3">
+                <div class="text-center pb-2 border-b border-line shrink-0">
+                    <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Pesanan Berhasil Terkirim</span>
+                    <h3 class="text-lg font-black text-slate-900 mt-1">TIKET PENGAMBILAN</h3>
+                    <p class="text-[10px] text-slate-400">Tunjukkan tiket ini kepada kasir saat mengambil pesanan</p>
+                </div>
+
+                <template x-if="lastOrderData">
+                    <div class="space-y-3 text-xs">
+                        <!-- NOMOR TIKET TEKS SANGAT BESAR -->
+                        <div class="bg-rose-50 border-2 border-dashed border-rose-300 p-4 rounded-xl text-center space-y-1">
+                            <span class="text-[10px] text-rose-600 font-bold uppercase tracking-widest block">KODE TIKET / ANTREAN</span>
+                            <div class="font-mono font-black text-2xl text-rose-700 tracking-wider" x-text="lastOrderData.kodeTiket"></div>
+                            <span class="text-[9px] text-slate-500 block font-medium" x-text="'Atas Nama: ' + lastOrderData.namaPemesan"></span>
+                        </div>
+
+                        <div class="bg-slate-50 border border-line p-3 rounded-xl space-y-1.5 text-[11px]">
+                            <div class="flex justify-between text-slate-600">
+                                <span>Waktu Pesan:</span>
+                                <span class="font-mono text-slate-900 font-semibold" x-text="lastOrderData.waktu"></span>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Metode Bayar:</span>
+                                <span class="font-semibold text-slate-900" x-text="lastOrderData.metodeBayar"></span>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>No. WhatsApp:</span>
+                                <span class="font-mono text-slate-900" x-text="lastOrderData.telepon"></span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <span class="font-bold text-[10px] text-slate-400 uppercase tracking-wider block">Rincian Menu</span>
+                            <div class="bg-white border border-line rounded-xl p-3 divide-y divide-slate-100 space-y-1.5">
+                                <template x-for="it in lastOrderData.items" :key="it.uid">
+                                    <div class="pt-1.5 first:pt-0">
+                                        <div class="flex justify-between font-bold text-slate-800">
+                                            <span x-text="it.qty + 'x ' + it.nama"></span>
+                                            <span class="font-mono" x-text="'Rp ' + Number(hitungTotalItem(it)).toLocaleString('id-ID')"></span>
+                                        </div>
+                                        <template x-if="it.varians && it.varians.length > 0">
+                                            <div class="text-[10px] text-slate-400 pl-2">
+                                                <template x-for="v in it.varians" :key="v.namaOpsi">
+                                                    <span class="block" x-text="'• ' + (v.tipeGroup ? v.tipeGroup + ': ' : '') + v.namaOpsi + (v.qty > 1 ? ' (' + v.qty + 'x)' : '')"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-line pt-2 flex justify-between items-center text-sm font-bold">
+                            <span>Total Tagihan:</span>
+                            <span class="font-mono text-rose-600 text-base" x-text="'Rp ' + Number(lastOrderData.totalHarga).toLocaleString('id-ID')"></span>
+                        </div>
+                    </div>
+                </template>
             </div>
 
-            <template x-if="lastOrderData">
-                <div class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
-                    <!-- NOMOR TIKET TEKS SANGAT BESAR -->
-                    <div class="bg-rose-50 border-2 border-dashed border-rose-300 p-4 rounded-xl text-center space-y-1">
-                        <span class="text-[10px] text-rose-600 font-bold uppercase tracking-widest block">KODE TIKET / ANTREAN</span>
-                        <div class="font-mono font-black text-2xl text-rose-700 tracking-wider" x-text="lastOrderData.kodeTiket"></div>
-                        <span class="text-[9px] text-slate-500 block font-medium" x-text="'Atas Nama: ' + lastOrderData.namaPemesan"></span>
-                    </div>
-
-                    <div class="bg-slate-50 border border-line p-3 rounded-xl space-y-1.5 text-[11px]">
-                        <div class="flex justify-between text-slate-600">
-                            <span>Waktu Pesan:</span>
-                            <span class="font-mono text-slate-900 font-semibold" x-text="lastOrderData.waktu"></span>
-                        </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>Metode Bayar:</span>
-                            <span class="font-semibold text-slate-900" x-text="lastOrderData.metodeBayar"></span>
-                        </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>No. WhatsApp:</span>
-                            <span class="font-mono text-slate-900" x-text="lastOrderData.telepon"></span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5">
-                        <span class="font-bold text-[10px] text-slate-400 uppercase tracking-wider block">Rincian Menu</span>
-                        <div class="bg-white border border-line rounded-xl p-3 divide-y divide-slate-100 space-y-1.5">
-                            <template x-for="it in lastOrderData.items" :key="it.uid">
-                                <div class="pt-1.5 first:pt-0">
-                                    <div class="flex justify-between font-bold text-slate-800">
-                                        <span x-text="it.qty + 'x ' + it.nama"></span>
-                                        <span class="font-mono" x-text="'Rp ' + Number(hitungTotalItem(it)).toLocaleString('id-ID')"></span>
-                                    </div>
-                                    <template x-if="it.varians && it.varians.length > 0">
-                                        <div class="text-[10px] text-slate-400 pl-2">
-                                            <template x-for="v in it.varians" :key="v.namaOpsi">
-                                                <span class="block" x-text="'• ' + (v.tipeGroup ? v.tipeGroup + ': ' : '') + v.namaOpsi + (v.qty > 1 ? ' (' + v.qty + 'x)' : '')"></span>
-                                            </template>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-line pt-2 flex justify-between items-center text-sm font-bold">
-                        <span>Total Tagihan:</span>
-                        <span class="font-mono text-rose-600 text-base" x-text="'Rp ' + Number(lastOrderData.totalHarga).toLocaleString('id-ID')"></span>
-                    </div>
-                </div>
-            </template>
-
             <div class="pt-2 border-t border-line shrink-0 space-y-2">
-                <button type="button" @click="cetakTiketPelanggan()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
-                    <span>🖨️ Cetak / Simpan Tiket PDF</span>
+                <button type="button" @click="downloadTiketGambar()" :disabled="isDownloading"
+                        class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
+                    <span x-text="isDownloading ? 'Mengunduh Gambar...' : '📥 Download Tiket Gambar (PNG)'"></span>
                 </button>
                 <button type="button" @click="selesaiLihatTiket()" class="w-full bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl text-xs">
                     Selesai & Kembali ke Menu
                 </button>
             </div>
         </div>
-    </div>
-
-    <!-- AREA CETAK TIKET PELANGGAN -->
-    <div id="area-cetak-tiket">
-        <template x-if="lastOrderData">
-            <div style="font-family: monospace; font-size: 11px; text-align: center; width: 100%; max-width: 80mm;">
-                <h2 style="font-size: 16px; font-weight: bold; margin: 0;">SEBLAK EMIH</h2>
-                <p style="font-size: 10px; margin: 2px 0;">*** TIKET PENGAMBILAN ***</p>
-                <div style="border: 2px dashed #000; padding: 8px; margin: 8px 0;">
-                    <span style="font-size: 9px; display: block;">KODE TIKET:</span>
-                    <strong style="font-size: 20px;" x-text="lastOrderData.kodeTiket"></strong>
-                </div>
-                <div style="text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;">
-                    <div>Pemesan : <span style="font-weight: bold;" x-text="lastOrderData.namaPemesan"></span></div>
-                    <div>Waktu   : <span x-text="lastOrderData.waktu"></span></div>
-                    <div>Metode  : <span x-text="lastOrderData.metodeBayar"></span></div>
-                </div>
-                <div style="text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;">
-                    <template x-for="it in lastOrderData.items" :key="it.uid">
-                        <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                            <span x-text="it.qty + 'x ' + it.nama"></span>
-                            <span x-text="Number(hitungTotalItem(it)).toLocaleString('id-ID')"></span>
-                        </div>
-                    </template>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px;">
-                    <span>TOTAL :</span>
-                    <span x-text="Number(lastOrderData.totalHarga).toLocaleString('id-ID')"></span>
-                </div>
-                <p style="font-size: 9px; margin-top: 10px;">Harap tunjukkan tiket ini pada kasir saat pengambilan.</p>
-            </div>
-        </template>
     </div>
 
     <!-- TOAST NOTIFIKASI -->
@@ -481,6 +437,7 @@
             webAppUrlDb: 'https://script.google.com/macros/s/AKfycbwUNbfCpd6V9-r7Q6TGccvkIsuZZpZugWU4ulIrLYt-Z_WXPodgmiSiPf1StOw4-7W0Nw/exec',
             isLoading: false,
             isSubmitting: false,
+            isDownloading: false,
 
             searchQuery: '',
             kategoriFilter: 'Semua',
@@ -651,7 +608,7 @@
                 }
             },
 
-            pilihOpsiVarian(grupNama, vOpsi) {
+            pilihOspiVarian(grupNama, vOpsi) {
                 if (this.formVarianTerpilih[grupNama] && this.formVarianTerpilih[grupNama].namaOpsi === vOpsi.namaOpsi) {
                     delete this.formVarianTerpilih[grupNama];
                 } else {
@@ -813,8 +770,33 @@
                 this.showModalTiketPelanggan = true;
             },
 
-            cetakTiketPelanggan() {
-                this.$nextTick(() => { window.print(); });
+            downloadTiketGambar() {
+                const node = document.getElementById('kartu-tiket-downloadable');
+                if (!node) return;
+
+                this.isDownloading = true;
+
+                html2canvas(node, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    useCORS: true
+                }).then(canvas => {
+                    const image = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    const namaFile = (this.lastOrderData && this.lastOrderData.kodeTiket) ? 
+                        `Tiket-${this.lastOrderData.kodeTiket.replace('#', '')}.png` : 'Tiket-Pengambilan.png';
+                    
+                    link.href = image;
+                    link.download = namaFile;
+                    link.click();
+
+                    this.isDownloading = false;
+                    this.pampilkanToast('Tiket berhasil diunduh ke galeri!');
+                }).catch(err => {
+                    console.error('Gagal membuat gambar tiket:', err);
+                    this.isDownloading = false;
+                    alert('Gagal membuat gambar tiket. Silakan ambil screenshot secara manual.');
+                });
             },
 
             selesaiLihatTiket() {
