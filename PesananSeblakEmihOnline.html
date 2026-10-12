@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pesan Online - Seblak Emih</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+    <style>
+        body { background-color: #f8fafc; color: #0f172a; -webkit-tap-highlight-color: transparent; }
+        .border-line { border-color: #e2e8f0; }
+        .input-dark { background-color: #ffffff; border: 1px solid #cbd5e1; color: #0f172a; }
+        .input-dark:focus { border-color: #e11d48; outline: none; ring: 1px #e11d48; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden select-none bg-slate-50 text-slate-900" x-data="onlineOrderApp()" x-init="initApp()">
+
+    <!-- HEADER BRANDING & KERANJANG RINGKAS -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-line px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-sm tracking-wider flex items-center justify-center shadow-sm">
+                SE
+            </div>
+            <div>
+                <h1 class="font-bold text-sm text-slate-900 leading-tight">Seblak Emih</h1>
+                <p class="text-[10px] text-rose-600 font-semibold font-mono">Pemesanan Online Self-Service</p>
+            </div>
+        </div>
+
+        <button type="button" @click="bukaKeranjang()" class="bg-rose-600 hover:bg-rose-700 active:scale-95 transition text-white px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-sm">
+            <span class="text-xs font-bold font-mono" x-text="hitungTotalQtyKeranjang() + ' Item'"></span>
+            <span class="text-[11px] font-mono font-bold bg-rose-700 px-2 py-0.5 rounded-lg" x-text="'Rp ' + Number(hitungTotalHargaKeranjang()).toLocaleString('id-ID')"></span>
+        </button>
+    </header>
+
+    <!-- CONTAINER UTAMA - DAFTAR MENU -->
+    <main class="flex-1 overflow-y-auto p-3 max-w-2xl mx-auto w-full space-y-3">
+        
+        <!-- SEARCH & FILTER KATEGORI -->
+        <div class="p-3 border border-line bg-white rounded-2xl space-y-2 shadow-2xs">
+            <input type="text" x-model="searchQuery" placeholder="Cari menu seblak favoritmu..." class="w-full input-dark rounded-xl py-2 px-3 text-xs bg-slate-50 border-slate-200">
+
+            <div class="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
+                <button type="button" @click="kategoriFilter = 'Semua'" 
+                        :class="kategoriFilter === 'Semua' ? 'bg-slate-900 text-white font-semibold' : 'bg-white text-slate-600 border border-line hover:bg-slate-50'"
+                        class="px-3.5 py-1.5 rounded-lg whitespace-nowrap transition shrink-0">
+                    Semua
+                </button>
+                <template x-for="k in listKategori" :key="k.id || k.nama">
+                    <button type="button" @click="kategoriFilter = k.nama" 
+                            :class="kategoriFilter === k.nama ? 'bg-slate-900 text-white font-semibold' : 'bg-white text-slate-600 border border-line hover:bg-slate-50'"
+                            class="px-3.5 py-1.5 rounded-lg whitespace-nowrap transition shrink-0"
+                            x-text="k.nama">
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <!-- GRID PRODUK PRODUK -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-max">
+            <template x-for="p in produkTersaring" :key="p.id">
+                <div @click="pilihProduk(p)" class="bg-white hover:border-slate-300 border border-line active:scale-98 transition rounded-2xl p-3 flex flex-col justify-between cursor-pointer shadow-2xs min-h-[110px] relative overflow-hidden">
+                    <template x-if="p.lacakStok">
+                        <span :class="Number(p.stok || 0) > 0 ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-rose-50 text-rose-600 border-rose-200'"
+                              class="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded border font-mono font-bold">
+                            Stok: <span x-text="p.stok || 0"></span>
+                        </span>
+                    </template>
+
+                    <div>
+                        <span class="text-[9px] text-slate-400 font-semibold block uppercase tracking-wider" x-text="p.kategori"></span>
+                        <h3 class="font-bold text-xs sm:text-sm text-slate-800 line-clamp-2 mt-0.5" x-text="p.nama"></h3>
+                    </div>
+
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <span class="font-mono text-xs font-bold text-slate-900">
+                            <span x-text="p.adaHarga !== false && Number(p.hargaBase || p.harga) > 0 ? ('Rp ' + Number(p.hargaBase || p.harga).toLocaleString('id-ID')) : 'Custom'"></span>
+                        </span>
+                        <span class="text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-md font-bold">+ Pesan</span>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="isLoading">
+                <div class="col-span-full py-16 text-center text-slate-400 text-xs font-mono animate-pulse">
+                    Memuat daftar menu seblak...
+                </div>
+            </template>
+
+            <template x-if="!isLoading && produkTersaring.length === 0">
+                <div class="col-span-full py-12 text-center text-slate-400 text-xs">
+                    Menu tidak ditemukan.
+                </div>
+            </template>
+        </div>
+
+    </main>
+
+    <!-- FLOATING BAR KERANJANG DI BAWAH -->
+    <div x-show="keranjang.length > 0" class="sticky bottom-0 z-20 bg-white border-t border-line p-3 shadow-xl">
+        <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
+            <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">TOTAL PESANAN</span>
+                <span class="font-mono font-bold text-base text-rose-600" x-text="'Rp ' + Number(hitungTotalHargaKeranjang()).toLocaleString('id-ID')"></span>
+            </div>
+            <button type="button" @click="bukaKeranjang()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-2">
+                <span>Lihat Keranjang (<span x-text="hitungTotalQtyKeranjang()"></span>)</span>
+                <span>→</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL VARIANT & OPTIONS (PRESISI SAMA DENGAN KASIR) -->
+    <div x-show="showVariantModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-line w-full max-w-md rounded-2xl p-5 space-y-4 text-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-line pb-2">
+                <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">KUSTOMISASI PESANAN</h3>
+                <button type="button" @click="showVariantModal = false" class="text-slate-400 hover:text-slate-700 text-lg font-bold">&times;</button>
+            </div>
+
+            <div class="border border-line bg-slate-50 px-4 py-3 rounded-xl text-center space-y-1">
+                <h2 class="text-lg font-bold text-slate-900" x-text="selectedProduct ? selectedProduct.nama : 'Produk'"></h2>
+                <template x-if="selectedProduct && (selectedProduct.adaHarga !== false && Number(selectedProduct.hargaBase || selectedProduct.harga) > 0)">
+                    <span class="text-xs text-rose-600 font-mono font-semibold block" x-text="'Harga Base: Rp ' + Number(selectedProduct.hargaBase || selectedProduct.harga || 0).toLocaleString('id-ID')"></span>
+                </template>
+            </div>
+
+            <!-- OPSI VARIAN -->
+            <div class="space-y-4">
+                <template x-for="grupNama in dapatkanDaftarGrupVarianProduk()" :key="grupNama">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block" x-text="grupNama"></label>
+                            <span class="text-[10px] text-slate-400 font-medium" x-text="isGrupMultiSelect(grupNama) ? 'Bisa Banyak' : 'Pilih 1'"></span>
+                        </div>
+                        
+                        <!-- MULTI SELECT / TOPING -->
+                        <template x-if="isGrupMultiSelect(grupNama)">
+                            <div class="space-y-1.5">
+                                <template x-for="v in dapatkanOspiVarianSesuaiGrup(grupNama)" :key="v.namaOpsi">
+                                    <div class="p-2.5 rounded-lg text-xs font-medium border transition flex justify-between items-center bg-slate-50 border-line">
+                                        <div class="truncate pr-2">
+                                            <span x-text="v.namaOpsi" class="block font-bold text-slate-800"></span>
+                                            <span class="text-[10px] font-mono text-slate-500 block" x-text="Number(v.harga) > 0 ? ('+Rp ' + Number(v.harga).toLocaleString('id-ID')) : ''"></span>
+                                        </div>
+
+                                        <div>
+                                            <template x-if="dapatkanQtyOpsi(grupNama, v.namaOpsi) === 0">
+                                                <button type="button" @click="tambahQtyMultiOpsi(grupNama, v)" class="bg-white hover:bg-slate-100 border border-line text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-2xs">
+                                                    + Tambah
+                                                </button>
+                                            </template>
+
+                                            <template x-if="dapatkanQtyOpsi(grupNama, v.namaOpsi) > 0">
+                                                <div class="flex items-center gap-1 bg-white border border-line p-1 rounded-lg">
+                                                    <button type="button" @click="kurangiQtyMultiOpsi(grupNama, v)" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded flex items-center justify-center text-xs">-</button>
+                                                    <span class="font-mono font-bold text-xs px-2 text-slate-900" x-text="dapatkanQtyOpsi(grupNama, v.namaOpsi)"></span>
+                                                    <button type="button" @click="tambahQtyMultiOpsi(grupNama, v)" class="w-6 h-6 bg-slate-900 text-white font-bold rounded flex items-center justify-center text-xs">+</button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- SINGLE SELECT -->
+                        <template x-if="!isGrupMultiSelect(grupNama)">
+                            <div class="grid grid-cols-2 gap-2">
+                                <template x-for="v in dapatkanOspiVarianSesuaiGrup(grupNama)" :key="v.namaOpsi">
+                                    <button type="button" @click="pilihOpsiVarian(grupNama, v)"
+                                            :class="isOpsiPilihan(grupNama, v.namaOpsi) ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-50 text-slate-700 border-line hover:bg-slate-100 font-semibold'"
+                                            class="p-2.5 rounded-lg text-xs border transition text-left flex justify-between items-center w-full">
+                                        <span class="truncate" x-text="v.namaOpsi"></span>
+                                        <span class="text-[10px] font-mono opacity-80 shrink-0 ml-1" x-text="Number(v.harga) > 0 ? ('+Rp ' + Number(v.harga).toLocaleString('id-ID')) : ''"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- INPUT CATATAN KHUSUS MENU (NOTES) -->
+                <div class="space-y-1 pt-2 border-t border-line">
+                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Catatan Khusus Pesanan Ini:</label>
+                    <input type="text" x-model="inputCatatanTemp" placeholder="Contoh: Kuah kental, pedas banget, pisah kuah..." class="w-full input-dark rounded-lg p-2.5 text-xs bg-slate-50 border-slate-200">
+                </div>
+            </div>
+
+            <div class="border-t border-line pt-3 flex justify-between items-center text-xs font-semibold">
+                <span class="text-slate-500">Harga Subtotal:</span>
+                <span class="text-slate-900 font-mono text-base font-bold" x-text="'Rp ' + hitungHargaPerItem(selectedProduct, formVarianTerpilih).toLocaleString('id-ID')"></span>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button type="button" @click="showVariantModal = false" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs transition">
+                    Batal
+                </button>
+                <button type="button" @click="tambahkanItemKeKeranjang()" class="w-2/3 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-lg text-xs transition shadow-sm">
+                    + Tambahkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL KERANJANG & FORM PEMESANAN ONLINE -->
+    <div x-show="showModalKeranjang" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-line w-full max-w-md rounded-2xl p-4 sm:p-5 space-y-4 text-slate-800 shadow-xl max-h-[90vh] flex flex-col">
+            
+            <div class="flex justify-between items-center border-b border-line pb-3 shrink-0">
+                <h3 class="font-bold text-base text-slate-900">Keranjang Pesanan Online</h3>
+                <button type="button" @click="showModalKeranjang = false" class="text-slate-400 hover:text-slate-700 text-lg font-bold">&times;</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+                
+                <!-- RINCIAN ITEM KERANJANG -->
+                <div class="space-y-2">
+                    <template x-for="(item, idx) in keranjang" :key="item.uid">
+                        <div class="bg-slate-50 border border-line rounded-xl p-3 space-y-2">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="w-full">
+                                    <h4 class="font-bold text-xs text-slate-900" x-text="item.nama"></h4>
+                                    <template x-if="item.varians && item.varians.length > 0">
+                                        <div class="text-[10px] text-slate-500 mt-1 space-y-0.5">
+                                            <template x-for="v in item.varians" :key="v.namaOpsi">
+                                                <div class="flex items-center gap-1">
+                                                    <span>•</span>
+                                                    <span x-text="(v.tipeGroup ? v.tipeGroup + ': ' : '') + v.namaOpsi + (v.qty > 1 ? ' (' + v.qty + 'x)' : '')"></span>
+                                                    <span x-show="v.harga > 0" class="text-slate-400 font-mono" x-text="'+Rp ' + Number(v.harga * v.qty).toLocaleString('id-ID')"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="item.catatan">
+                                        <p class="text-[10px] text-slate-500 italic mt-1" x-text="'Catatan: ' + item.catatan"></p>
+                                    </template>
+                                </div>
+                                <button type="button" @click="hapusItemKeranjang(idx)" class="text-slate-400 hover:text-rose-600 text-xs font-bold p-0.5 shrink-0">&times;</button>
+                            </div>
+
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                                <span class="font-mono text-xs font-bold text-slate-900" x-text="'Rp ' + Number(hitungTotalItem(item)).toLocaleString('id-ID')"></span>
+                                <div class="flex items-center gap-1.5 bg-white border border-line rounded-lg p-1">
+                                    <button type="button" @click="kurangiQtyItem(idx)" class="w-5 h-5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded font-bold text-xs flex items-center justify-center">-</button>
+                                    <span class="text-xs font-bold font-mono px-1 text-slate-900" x-text="item.qty"></span>
+                                    <button type="button" @click="tambahQtyItem(idx)" class="w-5 h-5 bg-slate-900 text-white rounded font-bold text-xs flex items-center justify-center">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="keranjang.length === 0">
+                        <div class="py-8 text-center text-slate-400 text-xs">
+                            Keranjang belanja kosong.
+                        </div>
+                    </template>
+                </div>
+
+                <!-- FORM IDENTITAS PEMESAN -->
+                <div class="bg-slate-50 border border-line rounded-xl p-3 space-y-2.5 pt-3">
+                    <h4 class="font-bold text-[11px] text-slate-700 uppercase tracking-wider">Data Pemesan</h4>
+
+                    <div class="space-y-1">
+                        <label class="block text-[11px] text-slate-600 font-semibold">Nama Pemesan <span class="text-rose-600">*</span></label>
+                        <input type="text" x-model="formNamaPemesan" placeholder="Contoh: Kak Sarah" class="w-full input-dark rounded-lg p-2 text-xs font-medium">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-[11px] text-slate-600 font-semibold">Nomor WhatsApp / Telp <span class="text-rose-600">*</span></label>
+                        <input type="tel" x-model="formTelepon" placeholder="Contoh: 081234567890" class="w-full input-dark rounded-lg p-2 text-xs font-medium">
+                    </div>
+
+                    <!-- METODE PEMBAYARAN ONLINE -->
+                    <div class="space-y-1 pt-1">
+                        <label class="block text-[11px] text-slate-600 font-semibold">Metode Pembayaran</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @click="pilihanPembayaran = 'QRIS'"
+                                    :class="pilihanPembayaran === 'QRIS' ? 'bg-slate-900 text-white font-bold' : 'bg-white border-line text-slate-700 hover:bg-slate-100'"
+                                    class="p-2.5 rounded-lg border text-center transition text-xs">
+                                📱 Bayar QRIS
+                            </button>
+                            <button type="button" @click="pilihanPembayaran = 'Bayar di Kasir'"
+                                    :class="pilihanPembayaran === 'Bayar di Kasir' ? 'bg-slate-900 text-white font-bold' : 'bg-white border-line text-slate-700 hover:bg-slate-100'"
+                                    class="p-2.5 rounded-lg border text-center transition text-xs">
+                                💵 Bayar di Kasir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TOTAL & EKSEKUSI KIRIM -->
+            <div class="pt-3 border-t border-line shrink-0 space-y-3">
+                <div class="flex justify-between text-xs font-bold text-slate-900">
+                    <span>Total Tagihan:</span>
+                    <span class="font-mono text-rose-600 text-base" x-text="'Rp ' + Number(hitungTotalHargaKeranjang()).toLocaleString('id-ID')"></span>
+                </div>
+
+                <button type="button" @click="kirimPesananOnline()" :disabled="isSubmitting || keranjang.length === 0"
+                        :class="isSubmitting || keranjang.length === 0 ? 'opacity-40 cursor-not-allowed bg-slate-300' : 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm'"
+                        class="w-full font-semibold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <span x-text="isSubmitting ? 'Mengirim Pesanan...' : 'Kirim Pesanan Sekarang'"></span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL POPUP QRIS PEMBAYARAN -->
+    <div x-show="showModalQRIS" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-line w-full max-w-xs rounded-2xl p-5 space-y-4 text-center shadow-2xl">
+            <div>
+                <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Scan QRIS Pembayaran</h3>
+                <p class="text-[10px] text-slate-500 mt-0.5">Seblak Emih Official</p>
+            </div>
+
+            <div class="bg-slate-50 border border-line p-3 rounded-xl flex flex-col items-center justify-center space-y-2">
+                <!-- DUMMY / PLACEHOLDER QRIS CODE -->
+                <div class="w-48 h-48 bg-white border border-slate-200 rounded-lg p-2 flex items-center justify-center shadow-2xs">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SEBLAK_EMIH_QRIS_PAYMENT" alt="QRIS Seblak Emih" class="w-full h-full object-contain">
+                </div>
+                <span class="font-mono font-bold text-rose-600 text-sm" x-text="'Rp ' + Number(hitungTotalHargaKeranjang()).toLocaleString('id-ID')"></span>
+            </div>
+
+            <p class="text-[10px] text-slate-400">Silakan selesaikan pembayaran. Pesanan Anda otomatis terhubung ke sistem kasir.</p>
+
+            <button type="button" @click="konfirmasiSelesaiOrder()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm">
+                Saya Sudah Bayar / Selesai
+            </button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFIKASI -->
+    <div x-show="showToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white font-medium text-xs px-4 py-2.5 rounded-lg shadow-lg" style="display: none;">
+        <span x-text="toastMessage"></span>
+    </div>
+
+    <script>
+    function onlineOrderApp() {
+        return {
+            webAppUrlDb: 'https://script.google.com/macros/s/AKfycbwUNbfCpd6V9-r7Q6TGccvkIsuZZpZugWU4ulIrLYt-Z_WXPodgmiSiPf1StOw4-7W0Nw/exec',
+            isLoading: false,
+            isSubmitting: false,
+
+            searchQuery: '',
+            kategoriFilter: 'Semua',
+
+            listProduk: [],
+            listKategori: [],
+            listGrupVarian: [],
+            listVarianAll: [],
+
+            keranjang: [],
+            showVariantModal: false,
+            showModalKeranjang: false,
+            showModalQRIS: false,
+
+            selectedProduct: null,
+            formVarianTerpilih: {},
+            inputCatatanTemp: '',
+
+            formNamaPemesan: '',
+            formTelepon: '',
+            pilihanPembayaran: 'QRIS',
+
+            showToast: false,
+            toastMessage: '',
+
+            norm(str) { return (str || '').toString().trim().toLowerCase(); },
+
+            get produkTersaring() {
+                return this.listProduk.filter(p => {
+                    let katNama = p.kategori || p.namaKategori || '';
+                    let prodNama = p.nama || p.namaProduk || '';
+                    let matchKat = this.kategoriFilter === 'Semua' || this.norm(katNama) === this.norm(this.kategoriFilter);
+                    let matchSearch = !this.searchQuery || this.norm(prodNama).includes(this.norm(this.searchQuery));
+                    return matchKat && matchSearch;
+                });
+            },
+
+            initApp() {
+                // Muat Cache Lokal Dahulu Agar Anti Lag Saat Dibuka
+                let savedProd = localStorage.getItem('MASTER_PRODUCTS');
+                if (savedProd) try { this.listProduk = JSON.parse(savedProd); } catch(e){}
+
+                let savedKat = localStorage.getItem('MASTER_KATEGORI');
+                if (savedKat) try { this.listKategori = JSON.parse(savedKat); } catch(e){}
+
+                let savedGrup = localStorage.getItem('LIST_GRUP_VARIAN');
+                if (savedGrup) try { this.listGrupVarian = JSON.parse(savedGrup); } catch(e){}
+
+                let savedVar = localStorage.getItem('MASTER_TOPINGS');
+                if (savedVar) try { this.listVarianAll = JSON.parse(savedVar); } catch(e){}
+
+                this.fetchDataFromDb();
+            },
+
+            fetchDataFromDb() {
+                if (!this.webAppUrlDb) return;
+                this.isLoading = true;
+
+                const cbDb = 'onlineDb_' + Date.now();
+                const scriptDb = document.createElement('script');
+                scriptDb.src = `${this.webAppUrlDb}?action=getInventoryData&callback=${cbDb}`;
+
+                window[cbDb] = (data) => {
+                    this.isLoading = false;
+                    delete window[cbDb];
+                    if (scriptDb.parentNode) scriptDb.parentNode.removeChild(scriptDb);
+
+                    if (data && data.status === 'success') {
+                        if (data.produk) { this.listProduk = data.produk; localStorage.setItem('MASTER_PRODUCTS', JSON.stringify(this.listProduk)); }
+                        if (data.kategori) { this.listKategori = data.kategori; localStorage.setItem('MASTER_KATEGORI', JSON.stringify(this.listKategori)); }
+                        if (data.grupVarian) { this.listGrupVarian = data.grupVarian; localStorage.setItem('LIST_GRUP_VARIAN', JSON.stringify(this.listGrupVarian)); }
+                        if (data.varian) { this.listVarianAll = data.varian; localStorage.setItem('MASTER_TOPINGS', JSON.stringify(this.listVarianAll)); }
+                    }
+                };
+
+                scriptDb.onerror = () => { this.isLoading = false; };
+                document.body.appendChild(scriptDb);
+            },
+
+            pilihProduk(item) {
+                this.selectedProduct = item;
+                this.formVarianTerpilih = {};
+                this.inputCatatanTemp = '';
+                this.showVariantModal = true;
+            },
+
+            dapatkanDaftarGrupVarianProduk() {
+                if (!this.selectedProduct) return [];
+                let grupSet = new Set();
+
+                if (this.selectedProduct.varians && Array.isArray(this.selectedProduct.varians) && this.selectedProduct.varians.length > 0) {
+                    this.selectedProduct.varians.forEach(v => {
+                        if (v.tipeGroup || v.grupVarian) grupSet.add(v.tipeGroup || v.grupVarian);
+                    });
+                }
+
+                if (grupSet.size === 0) {
+                    let katProduk = (this.selectedProduct.kategori || '').toLowerCase();
+                    if (katProduk.includes('seblak') || katProduk.includes('baso') || katProduk.includes('mie')) {
+                        if (this.listVarianAll && this.listVarianAll.length > 0) {
+                            this.listVarianAll.forEach(v => {
+                                grupSet.add(v.tipeGroup || v.grupVarian || 'Toping');
+                            });
+                        }
+                    }
+                }
+
+                return Array.from(grupSet);
+            },
+
+            dapatkanOspiVarianSesuaiGrup(grupNama) {
+                if (!this.selectedProduct) return [];
+                let listHasil = [];
+
+                if (this.selectedProduct.varians && Array.isArray(this.selectedProduct.varians) && this.selectedProduct.varians.length > 0) {
+                    let filtered = this.selectedProduct.varians.filter(v => (v.tipeGroup || v.grupVarian) === grupNama);
+                    listHasil = listHasil.concat(filtered);
+                } 
+                else if (this.listVarianAll && this.listVarianAll.length > 0) {
+                    let katProduk = (this.selectedProduct.kategori || '').toLowerCase();
+                    if (katProduk.includes('seblak') || katProduk.includes('baso') || katProduk.includes('mie')) {
+                        let filteredAll = this.listVarianAll.filter(v => (v.tipeGroup || v.grupVarian || 'Toping').toLowerCase() === grupNama.toLowerCase());
+                        filteredAll.forEach(v => {
+                            if (!listHasil.some(h => h.namaOpsi === (v.namaOpsi || v.nama))) {
+                                listHasil.push({
+                                    id: v.id || v.namaOpsi || v.nama,
+                                    namaOpsi: v.namaOpsi || v.nama,
+                                    harga: Number(v.harga || 0),
+                                    tipeGroup: grupNama
+                                });
+                            }
+                        });
+                    }
+                }
+
+                return listHasil;
+            },
+
+            isGrupMultiSelect(grupNama) {
+                let found = this.listGrupVarian.find(g => (typeof g === 'string' ? g : g.nama).toLowerCase() === grupNama.toLowerCase());
+                if (found && typeof found === 'object') return found.isMulti;
+                return grupNama.toLowerCase().includes('toping');
+            },
+
+            tambahQtyMultiOpsi(grupNama, vOpsi) {
+                if (!this.formVarianTerpilih[grupNama]) this.formVarianTerpilih[grupNama] = [];
+                let idx = this.formVarianTerpilih[grupNama].findIndex(o => o.namaOpsi === vOpsi.namaOpsi);
+                if (idx !== -1) {
+                    this.formVarianTerpilih[grupNama][idx].qty++;
+                } else {
+                    this.formVarianTerpilih[grupNama].push({ ...vOpsi, qty: 1 });
+                }
+            },
+
+            kurangiQtyMultiOpsi(grupNama, vOpsi) {
+                if (!this.formVarianTerpilih[grupNama]) return;
+                let idx = this.formVarianTerpilih[grupNama].findIndex(o => o.namaOpsi === vOpsi.namaOpsi);
+                if (idx !== -1) {
+                    if (this.formVarianTerpilih[grupNama][idx].qty > 1) {
+                        this.formVarianTerpilih[grupNama][idx].qty--;
+                    } else {
+                        this.formVarianTerpilih[grupNama].splice(idx, 1);
+                    }
+                }
+            },
+
+            pilihOpsiVarian(grupNama, vOpsi) {
+                if (this.formVarianTerpilih[grupNama] && this.formVarianTerpilih[grupNama].namaOpsi === vOpsi.namaOpsi) {
+                    delete this.formVarianTerpilih[grupNama];
+                } else {
+                    this.formVarianTerpilih[grupNama] = vOpsi;
+                }
+            },
+
+            isOpsiPilihan(grupNama, namaOpsi) {
+                let target = this.formVarianTerpilih[grupNama];
+                if (!target) return false;
+                if (Array.isArray(target)) return target.some(o => o.namaOpsi === namaOpsi);
+                return target.namaOpsi === namaOpsi;
+            },
+
+            dapatkanQtyOpsi(grupNama, namaOpsi) {
+                let target = this.formVarianTerpilih[grupNama];
+                if (Array.isArray(target)) {
+                    let found = target.find(o => o.namaOpsi === namaOpsi);
+                    return found ? (found.qty || 1) : 0;
+                }
+                return 0;
+            },
+
+            hitungHargaPerItem(produk, varianTerpilih) {
+                if (!produk) return 0;
+                let base = Number(produk.hargaBase || produk.harga || 0);
+                let extra = 0;
+
+                Object.values(varianTerpilih).forEach(val => {
+                    if (Array.isArray(val)) {
+                        val.forEach(o => extra += (Number(o.harga || 0) * Number(o.qty || 1)));
+                    } else if (val && val.harga) {
+                        extra += Number(val.harga || 0);
+                    }
+                });
+
+                return base + extra;
+            },
+
+            tambahkanItemKeKeranjang() {
+                if (!this.selectedProduct) return;
+
+                let variansFlat = [];
+                Object.entries(this.formVarianTerpilih).forEach(([grup, val]) => {
+                    if (Array.isArray(val)) {
+                        val.forEach(o => variansFlat.push({ tipeGroup: grup, namaOpsi: o.namaOpsi, harga: Number(o.harga || 0), qty: o.qty || 1 }));
+                    } else if (val && val.namaOpsi) {
+                        variansFlat.push({ tipeGroup: grup, namaOpsi: val.namaOpsi, harga: Number(val.harga || 0), qty: 1 });
+                    }
+                });
+
+                this.keranjang.push({
+                    uid: 'ITEM-ONL-' + this.selectedProduct.id + '-' + Date.now(),
+                    id: this.selectedProduct.id,
+                    idProduk: this.selectedProduct.id,
+                    nama: this.selectedProduct.nama,
+                    kategori: this.selectedProduct.kategori,
+                    hargaBase: Number(this.selectedProduct.hargaBase || this.selectedProduct.harga || 0),
+                    varians: variansFlat,
+                    catatan: this.inputCatatanTemp ? this.inputCatatanTemp.trim() : '',
+                    qty: 1
+                });
+
+                this.showVariantModal = false;
+                this.pampilkanToast(`${this.selectedProduct.nama} Ditambahkan`);
+            },
+
+            bukaKeranjang() {
+                this.showModalKeranjang = true;
+            },
+
+            hitungTotalItem(item) {
+                let hargaBase = Number(item.hargaBase || item.harga || 0);
+                let totalVar = (item.varians || []).reduce((acc, v) => acc + (Number(v.harga || 0) * Number(v.qty || 1)), 0);
+                return (hargaBase + totalVar) * Number(item.qty || 1);
+            },
+
+            kurangiQtyItem(index) {
+                if (this.keranjang[index].qty > 1) this.keranjang[index].qty--;
+                else this.hapusItemKeranjang(index);
+            },
+
+            tambahQtyItem(index) { this.keranjang[index].qty++; },
+            hapusItemKeranjang(index) { 
+                this.keranjang.splice(index, 1); 
+                if (this.keranjang.length === 0) this.showModalKeranjang = false;
+            },
+            hitungTotalQtyKeranjang() { return this.keranjang.reduce((acc, item) => acc + Number(item.qty || 1), 0); },
+            hitungTotalHargaKeranjang() { return this.keranjang.reduce((acc, item) => acc + this.hitungTotalItem(item), 0); },
+
+            async kirimPesananOnline() {
+                if (this.keranjang.length === 0) return;
+                if (!this.formNamaPemesan.trim()) {
+                    alert('Harap isi Nama Pemesan!');
+                    return;
+                }
+                if (!this.formTelepon.trim()) {
+                    alert('Harap isi Nomor Telepon/WhatsApp!');
+                    return;
+                }
+
+                this.isSubmitting = true;
+
+                let payload = {
+                    action: 'saveOnlineOrder',
+                    data: {
+                        idOnline: 'ONL-' + Date.now(),
+                        namaPemesan: this.formNamaPemesan.trim(),
+                        telepon: this.formTelepon.trim(),
+                        metodeBayar: this.pilihanPembayaran,
+                        waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+                        totalHarga: this.hitungTotalHargaKeranjang(),
+                        items: this.keranjang
+                    }
+                };
+
+                try {
+                    await fetch(this.webAppUrlDb, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    this.isSubmitting = false;
+                    this.showModalKeranjang = false;
+
+                    if (this.pilihanPembayaran === 'QRIS') {
+                        this.showModalQRIS = true;
+                    } else {
+                        this.konfirmasiSelesaiOrder();
+                    }
+
+                } catch (e) {
+                    this.isSubmitting = false;
+                    alert('Gagal mengirim pesanan. Silakan periksa koneksi internet Anda.');
+                }
+            },
+
+            konfirmasiSelesaiOrder() {
+                this.showModalQRIS = false;
+                this.keranjang = [];
+                this.formNamaPemesan = '';
+                this.formTelepon = '';
+                this.pampilkanToast('Pesanan Berhasil Dikirim ke Kasir!');
+            },
+
+            pampilkanToast(pesan) {
+                this.toastMessage = pesan;
+                this.showToast = true;
+                setTimeout(() => { this.showToast = false; }, 2500);
+            }
+        };
+    }
+    </script>
+</body>
+</html>
