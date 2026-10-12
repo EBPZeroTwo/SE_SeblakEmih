@@ -113,7 +113,7 @@
         </div>
     </div>
 
-    <!-- MODAL VARIANT & OPTIONS (PRESISI SAMA DENGAN KASIR) -->
+    <!-- MODAL VARIANT & OPTIONS -->
     <div x-show="showVariantModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
         <div class="bg-white border border-line w-full max-w-md rounded-2xl p-5 space-y-4 text-slate-800 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b border-line pb-2">
@@ -314,19 +314,35 @@
 
     <!-- MODAL POPUP QRIS PEMBAYARAN -->
     <div x-show="showModalQRIS" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
-        <div class="bg-white border border-line w-full max-w-xs rounded-2xl p-5 space-y-4 text-center shadow-2xl">
+        <div class="bg-white border border-line w-full max-w-xs rounded-2xl p-5 space-y-3.5 text-center shadow-2xl">
             <div>
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Scan QRIS Pembayaran</h3>
                 <p class="text-[10px] text-slate-500 mt-0.5">Seblak Emih Official</p>
             </div>
 
+            <!-- GAMBAR QRIS DAN NOMINAL PENUH DENGAN KODE UNIK -->
             <div class="bg-slate-50 border border-line p-3 rounded-xl flex flex-col items-center justify-center space-y-2">
-                <div class="199237.jpg" alt="QRIS Seblak Emih" class="w-full h-full object-contain">
+                <div class="w-48 h-48 bg-white border border-slate-200 rounded-lg p-2 flex items-center justify-center shadow-2xs overflow-hidden">
+                    <img src="199237.jpg" id="imgQrisOfficial" alt="QRIS Seblak Emih" class="w-full h-full object-contain">
                 </div>
-                <span class="font-mono font-bold text-rose-600 text-sm" x-text="'Rp ' + Number(hitungTotalHargaKeranjang()).toLocaleString('id-ID')"></span>
+
+                <div class="text-center pt-1">
+                    <span class="font-mono font-bold text-rose-600 text-base block" x-text="'Rp ' + Number(totalDenganKodeUnik).toLocaleString('id-ID')"></span>
+                    <span class="text-[9px] text-amber-600 font-semibold block mt-0.5" x-text="'*Termasuk kode unik transaksi: Rp ' + kodeUnik"></span>
+                </div>
             </div>
 
-            <p class="text-[10px] text-slate-400">Silakan selesaikan pembayaran. Pesanan Anda otomatis terhubung ke sistem kasir.</p>
+            <!-- TOMBOL FITUR OPSI SIMPAN & DOWNLOAD QRIS -->
+            <div class="grid grid-cols-2 gap-2">
+                <a href="199237.jpg" download="QRIS-Seblak-Emih.jpg" class="bg-slate-100 hover:bg-slate-200 border border-line text-slate-800 font-semibold py-2 px-2 rounded-xl text-[11px] transition flex items-center justify-center gap-1">
+                    📥 Download
+                </a>
+                <button type="button" @click="salinTotalBayar()" class="bg-slate-100 hover:bg-slate-200 border border-line text-slate-800 font-semibold py-2 px-2 rounded-xl text-[11px] transition flex items-center justify-center gap-1">
+                    📋 Salin Nominal
+                </button>
+            </div>
+
+            <p class="text-[10px] text-slate-400 leading-tight">Silakan transfer sesuai nominal persis termasuk kode unik agar transaksi terverifikasi otomatis.</p>
 
             <button type="button" @click="konfirmasiSelesaiOrder()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm">
                 Saya Sudah Bayar / Selesai
@@ -367,6 +383,9 @@
             formTelepon: '',
             pilihanPembayaran: 'QRIS',
 
+            kodeUnik: 0,
+            totalDenganKodeUnik: 0,
+
             showToast: false,
             toastMessage: '',
 
@@ -383,7 +402,6 @@
             },
 
             initApp() {
-                // Muat Cache Lokal Dahulu Agar Anti Lag Saat Dibuka
                 let savedProd = localStorage.getItem('MASTER_PRODUCTS');
                 if (savedProd) try { this.listProduk = JSON.parse(savedProd); } catch(e){}
 
@@ -615,6 +633,17 @@
 
                 this.isSubmitting = true;
 
+                // GENERATE KODE UNIK DENGAN MAKSIMAL 230 (1 - 230)
+                this.kodeUnik = Math.floor(Math.random() * 230) + 1;
+                let subtotal = this.hitungTotalHargaKeranjang();
+
+                if (this.pilihanPembayaran === 'QRIS') {
+                    this.totalDenganKodeUnik = subtotal + this.kodeUnik;
+                } else {
+                    this.kodeUnik = 0;
+                    this.totalDenganKodeUnik = subtotal;
+                }
+
                 let payload = {
                     action: 'saveOnlineOrder',
                     data: {
@@ -623,7 +652,8 @@
                         telepon: this.formTelepon.trim(),
                         metodeBayar: this.pilihanPembayaran,
                         waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
-                        totalHarga: this.hitungTotalHargaKeranjang(),
+                        totalHarga: this.totalDenganKodeUnik,
+                        kodeUnik: this.kodeUnik,
                         items: this.keranjang
                     }
                 };
@@ -649,6 +679,15 @@
                     this.isSubmitting = false;
                     alert('Gagal mengirim pesanan. Silakan periksa koneksi internet Anda.');
                 }
+            },
+
+            salinTotalBayar() {
+                let text = this.totalDenganKodeUnik.toString();
+                navigator.clipboard.writeText(text).then(() => {
+                    this.pampilkanToast('Nominal Rp ' + Number(this.totalDenganKodeUnik).toLocaleString('id-ID') + ' disalin!');
+                }).catch(() => {
+                    this.pampilkanToast('Gagal menyalin otomatis');
+                });
             },
 
             konfirmasiSelesaiOrder() {
