@@ -14,11 +14,30 @@
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+        /* FORMAT CETAK TIKET PELANGGAN */
+        #area-cetak-tiket { display: none; }
+        @media print {
+            body * { visibility: hidden !important; }
+            #area-cetak-tiket, #area-cetak-tiket * { visibility: visible !important; }
+            #area-cetak-tiket {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 80mm !important;
+                padding: 10px !important;
+                background: white !important;
+                color: black !important;
+                font-family: monospace !important;
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body class="font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden select-none bg-slate-50 text-slate-900" x-data="onlineOrderApp()" x-init="initApp()">
 
-    <!-- HEADER BRANDING & KERANJANG RINGKAS -->
+    <!-- HEADER BRANDING & KERANJANG -->
     <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-line px-4 py-3 flex items-center justify-between shadow-sm shrink-0">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-slate-900 text-white font-black text-sm tracking-wider flex items-center justify-center shadow-sm">
@@ -36,10 +55,10 @@
         </button>
     </header>
 
-    <!-- CONTAINER UTAMA - DAFTAR MENU -->
+    <!-- CONTAINER DAFTAR MENU -->
     <main class="flex-1 overflow-y-auto p-3 max-w-2xl mx-auto w-full space-y-3">
         
-        <!-- SEARCH & FILTER KATEGORI -->
+        <!-- SEARCH & FILTER -->
         <div class="p-3 border border-line bg-white rounded-2xl space-y-2 shadow-2xs">
             <input type="text" x-model="searchQuery" placeholder="Cari menu seblak favoritmu..." class="w-full input-dark rounded-xl py-2 px-3 text-xs bg-slate-50 border-slate-200">
 
@@ -59,7 +78,7 @@
             </div>
         </div>
 
-        <!-- GRID PRODUK PRODUK -->
+        <!-- GRID PRODUK -->
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 auto-rows-max">
             <template x-for="p in produkTersaring" :key="p.id">
                 <div @click="pilihProduk(p)" class="bg-white hover:border-slate-300 border border-line active:scale-98 transition rounded-2xl p-3 flex flex-col justify-between cursor-pointer shadow-2xs min-h-[110px] relative overflow-hidden">
@@ -99,7 +118,7 @@
 
     </main>
 
-    <!-- FLOATING BAR KERANJANG DI BAWAH -->
+    <!-- FLOATING BAR KERANJANG -->
     <div x-show="keranjang.length > 0" class="sticky bottom-0 z-20 bg-white border-t border-line p-3 shadow-xl">
         <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
             <div>
@@ -183,10 +202,10 @@
                     </div>
                 </template>
 
-                <!-- INPUT CATATAN KHUSUS MENU (NOTES) -->
+                <!-- NOTES -->
                 <div class="space-y-1 pt-2 border-t border-line">
                     <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Catatan Khusus Pesanan Ini:</label>
-                    <input type="text" x-model="inputCatatanTemp" placeholder="Contoh: Kuah kental, pedas banget, pisah kuah..." class="w-full input-dark rounded-lg p-2.5 text-xs bg-slate-50 border-slate-200">
+                    <input type="text" x-model="inputCatatanTemp" placeholder="Contoh: Kuah kental, pedas banget..." class="w-full input-dark rounded-lg p-2.5 text-xs bg-slate-50 border-slate-200">
                 </div>
             </div>
 
@@ -217,7 +236,7 @@
 
             <div class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
                 
-                <!-- RINCIAN ITEM KERANJANG -->
+                <!-- RINCIAN ITEM -->
                 <div class="space-y-2">
                     <template x-for="(item, idx) in keranjang" :key="item.uid">
                         <div class="bg-slate-50 border border-line rounded-xl p-3 space-y-2">
@@ -261,7 +280,7 @@
                     </template>
                 </div>
 
-                <!-- FORM IDENTITAS PEMESAN -->
+                <!-- DATA PEMESAN -->
                 <div class="bg-slate-50 border border-line rounded-xl p-3 space-y-2.5 pt-3">
                     <h4 class="font-bold text-[11px] text-slate-700 uppercase tracking-wider">Data Pemesan</h4>
 
@@ -275,7 +294,6 @@
                         <input type="tel" x-model="formTelepon" placeholder="Contoh: 081234567890" class="w-full input-dark rounded-lg p-2 text-xs font-medium">
                     </div>
 
-                    <!-- METODE PEMBAYARAN ONLINE -->
                     <div class="space-y-1 pt-1">
                         <label class="block text-[11px] text-slate-600 font-semibold">Metode Pembayaran</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -295,7 +313,7 @@
 
             </div>
 
-            <!-- TOTAL & EKSEKUSI KIRIM -->
+            <!-- TOTAL & ACTION -->
             <div class="pt-3 border-t border-line shrink-0 space-y-3">
                 <div class="flex justify-between text-xs font-bold text-slate-900">
                     <span>Total Tagihan:</span>
@@ -312,7 +330,7 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP QRIS PEMBAYARAN -->
+    <!-- MODAL QRIS -->
     <div x-show="showModalQRIS" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
         <div class="bg-white border border-line w-full max-w-xs rounded-2xl p-5 space-y-3.5 text-center shadow-2xl">
             <div>
@@ -342,10 +360,114 @@
 
             <p class="text-[10px] text-slate-400 leading-tight">Silakan transfer sesuai nominal persis termasuk kode unik agar transaksi terverifikasi otomatis.</p>
 
-            <button type="button" @click="konfirmasiSelesaiOrder()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm">
-                Saya Sudah Bayar / Selesai
+            <button type="button" @click="bukaBuktiTransaksiPelanggan()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-sm">
+                Saya Sudah Bayar / Dapatkan Tiket
             </button>
         </div>
+    </div>
+
+    <!-- MODAL BUKTI TRANSAKSI & TIKET PENGAMBILAN PELANGGAN -->
+    <div x-show="showModalTiketPelanggan" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4" style="display: none;">
+        <div class="bg-white border border-line w-full max-w-sm rounded-2xl p-5 space-y-4 text-slate-800 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="text-center pb-2 border-b border-line shrink-0">
+                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Pesanan Berhasil Terkirim</span>
+                <h3 class="text-lg font-black text-slate-900 mt-1">TIKET PENGAMBILAN</h3>
+                <p class="text-[10px] text-slate-400">Tunjukkan tiket ini kepada kasir saat mengambil pesanan</p>
+            </div>
+
+            <template x-if="lastOrderData">
+                <div class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
+                    <!-- NOMOR TIKET TEKS SANGAT BESAR -->
+                    <div class="bg-rose-50 border-2 border-dashed border-rose-300 p-4 rounded-xl text-center space-y-1">
+                        <span class="text-[10px] text-rose-600 font-bold uppercase tracking-widest block">KODE TIKET / ANTREAN</span>
+                        <div class="font-mono font-black text-2xl text-rose-700 tracking-wider" x-text="lastOrderData.kodeTiket"></div>
+                        <span class="text-[9px] text-slate-500 block font-medium" x-text="'Atas Nama: ' + lastOrderData.namaPemesan"></span>
+                    </div>
+
+                    <div class="bg-slate-50 border border-line p-3 rounded-xl space-y-1.5 text-[11px]">
+                        <div class="flex justify-between text-slate-600">
+                            <span>Waktu Pesan:</span>
+                            <span class="font-mono text-slate-900 font-semibold" x-text="lastOrderData.waktu"></span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Metode Bayar:</span>
+                            <span class="font-semibold text-slate-900" x-text="lastOrderData.metodeBayar"></span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>No. WhatsApp:</span>
+                            <span class="font-mono text-slate-900" x-text="lastOrderData.telepon"></span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <span class="font-bold text-[10px] text-slate-400 uppercase tracking-wider block">Rincian Menu</span>
+                        <div class="bg-white border border-line rounded-xl p-3 divide-y divide-slate-100 space-y-1.5">
+                            <template x-for="it in lastOrderData.items" :key="it.uid">
+                                <div class="pt-1.5 first:pt-0">
+                                    <div class="flex justify-between font-bold text-slate-800">
+                                        <span x-text="it.qty + 'x ' + it.nama"></span>
+                                        <span class="font-mono" x-text="'Rp ' + Number(hitungTotalItem(it)).toLocaleString('id-ID')"></span>
+                                    </div>
+                                    <template x-if="it.varians && it.varians.length > 0">
+                                        <div class="text-[10px] text-slate-400 pl-2">
+                                            <template x-for="v in it.varians" :key="v.namaOpsi">
+                                                <span class="block" x-text="'• ' + (v.tipeGroup ? v.tipeGroup + ': ' : '') + v.namaOpsi + (v.qty > 1 ? ' (' + v.qty + 'x)' : '')"></span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-line pt-2 flex justify-between items-center text-sm font-bold">
+                        <span>Total Tagihan:</span>
+                        <span class="font-mono text-rose-600 text-base" x-text="'Rp ' + Number(lastOrderData.totalHarga).toLocaleString('id-ID')"></span>
+                    </div>
+                </div>
+            </template>
+
+            <div class="pt-2 border-t border-line shrink-0 space-y-2">
+                <button type="button" @click="cetakTiketPelanggan()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm">
+                    <span>🖨️ Cetak / Simpan Tiket PDF</span>
+                </button>
+                <button type="button" @click="selesaiLihatTiket()" class="w-full bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl text-xs">
+                    Selesai & Kembali ke Menu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AREA CETAK TIKET PELANGGAN -->
+    <div id="area-cetak-tiket">
+        <template x-if="lastOrderData">
+            <div style="font-family: monospace; font-size: 11px; text-align: center; width: 100%; max-width: 80mm;">
+                <h2 style="font-size: 16px; font-weight: bold; margin: 0;">SEBLAK EMIH</h2>
+                <p style="font-size: 10px; margin: 2px 0;">*** TIKET PENGAMBILAN ***</p>
+                <div style="border: 2px dashed #000; padding: 8px; margin: 8px 0;">
+                    <span style="font-size: 9px; display: block;">KODE TIKET:</span>
+                    <strong style="font-size: 20px;" x-text="lastOrderData.kodeTiket"></strong>
+                </div>
+                <div style="text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;">
+                    <div>Pemesan : <span style="font-weight: bold;" x-text="lastOrderData.namaPemesan"></span></div>
+                    <div>Waktu   : <span x-text="lastOrderData.waktu"></span></div>
+                    <div>Metode  : <span x-text="lastOrderData.metodeBayar"></span></div>
+                </div>
+                <div style="text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px;">
+                    <template x-for="it in lastOrderData.items" :key="it.uid">
+                        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+                            <span x-text="it.qty + 'x ' + it.nama"></span>
+                            <span x-text="Number(hitungTotalItem(it)).toLocaleString('id-ID')"></span>
+                        </div>
+                    </template>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px;">
+                    <span>TOTAL :</span>
+                    <span x-text="Number(lastOrderData.totalHarga).toLocaleString('id-ID')"></span>
+                </div>
+                <p style="font-size: 9px; margin-top: 10px;">Harap tunjukkan tiket ini pada kasir saat pengambilan.</p>
+            </div>
+        </template>
     </div>
 
     <!-- TOAST NOTIFIKASI -->
@@ -372,6 +494,7 @@
             showVariantModal: false,
             showModalKeranjang: false,
             showModalQRIS: false,
+            showModalTiketPelanggan: false,
 
             selectedProduct: null,
             formVarianTerpilih: {},
@@ -383,6 +506,7 @@
 
             kodeUnik: 0,
             totalDenganKodeUnik: 0,
+            lastOrderData: null,
 
             showToast: false,
             toastMessage: '',
@@ -595,9 +719,7 @@
                 this.pampilkanToast(`${this.selectedProduct.nama} Ditambahkan`);
             },
 
-            bukaKeranjang() {
-                this.showModalKeranjang = true;
-            },
+            bukaKeranjang() { this.showModalKeranjang = true; },
 
             hitungTotalItem(item) {
                 let hargaBase = Number(item.hargaBase || item.harga || 0);
@@ -620,16 +742,13 @@
 
             async kirimPesananOnline() {
                 if (this.keranjang.length === 0) return;
-                if (!this.formNamaPemesan.trim()) {
-                    alert('Harap isi Nama Pemesan!');
-                    return;
-                }
-                if (!this.formTelepon.trim()) {
-                    alert('Harap isi Nomor Telepon/WhatsApp!');
-                    return;
-                }
+                if (!this.formNamaPemesan.trim()) { alert('Harap isi Nama Pemesan!'); return; }
+                if (!this.formTelepon.trim()) { alert('Harap isi Nomor Telepon/WhatsApp!'); return; }
 
                 this.isSubmitting = true;
+
+                let noTiketRandom = Math.floor(1000 + Math.random() * 9000);
+                let kodeTiketUnik = '#ONL-' + noTiketRandom;
 
                 this.kodeUnik = Math.floor(Math.random() * 230) + 1;
                 let subtotal = this.hitungTotalHargaKeranjang();
@@ -641,26 +760,28 @@
                     this.totalDenganKodeUnik = subtotal;
                 }
 
-                let payload = {
-                    action: 'saveOnlineOrder',
-                    data: {
-                        idOnline: 'ONL-' + Date.now(),
-                        namaPemesan: this.formNamaPemesan.trim(),
-                        telepon: this.formTelepon.trim(),
-                        metodeBayar: this.pilihanPembayaran,
-                        waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
-                        totalHarga: this.totalDenganKodeUnik,
-                        kodeUnik: this.kodeUnik,
-                        items: this.keranjang
-                    }
+                let orderPayload = {
+                    idOnline: 'ONL-' + Date.now(),
+                    kodeTiket: kodeTiketUnik,
+                    namaPemesan: this.formNamaPemesan.trim(),
+                    telepon: this.formTelepon.trim(),
+                    metodeBayar: this.pilihanPembayaran,
+                    waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+                    totalHarga: this.totalDenganKodeUnik,
+                    kodeUnik: this.kodeUnik,
+                    items: JSON.parse(JSON.stringify(this.keranjang))
                 };
+
+                this.lastOrderData = orderPayload;
 
                 try {
                     await fetch(this.webAppUrlDb, {
                         method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'saveOnlineOrder',
+                            data: orderPayload
+                        })
                     });
 
                     this.isSubmitting = false;
@@ -669,7 +790,7 @@
                     if (this.pilihanPembayaran === 'QRIS') {
                         this.showModalQRIS = true;
                     } else {
-                        this.konfirmasiSelesaiOrder();
+                        this.bukaBuktiTransaksiPelanggan();
                     }
 
                 } catch (e) {
@@ -687,12 +808,21 @@
                 });
             },
 
-            konfirmasiSelesaiOrder() {
+            bukaBuktiTransaksiPelanggan() {
                 this.showModalQRIS = false;
+                this.showModalTiketPelanggan = true;
+            },
+
+            cetakTiketPelanggan() {
+                this.$nextTick(() => { window.print(); });
+            },
+
+            selesaiLihatTiket() {
+                this.showModalTiketPelanggan = false;
                 this.keranjang = [];
                 this.formNamaPemesan = '';
                 this.formTelepon = '';
-                this.pampilkanToast('Pesanan Berhasil Dikirim ke Kasir!');
+                this.pampilkanToast('Terima kasih! Pesanan Anda telah diterima kasir.');
             },
 
             pampilkanToast(pesan) {
