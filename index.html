@@ -434,7 +434,7 @@
     <script>
     function onlineOrderApp() {
         return {
-            // URL Proxy Vercel (Dapat diatur ke URL Domain Vercel Lengkap jika di-host lintas origin)
+            // URL Proxy Vercel Lengkap
             webAppUrlDb: 'https://saepos-vert.vercel.app/api/pos',
             isLoading: false,
             isSubmitting: false,
@@ -502,7 +502,8 @@
                 this.isLoading = true;
 
                 try {
-                    const res = await fetch(`${this.webAppUrlDb}?action=getInventoryData`);
+                    // Penambahan timestamp (_t) untuk mencegah cache browser
+                    const res = await fetch(`${this.webAppUrlDb}?action=getInventoryData&_t=${Date.now()}`);
                     const data = await res.json();
 
                     if (data && data.status === 'success') {
@@ -512,7 +513,7 @@
                         if (data.varian) { this.listVarianAll = data.varian; localStorage.setItem('MASTER_TOPINGS', JSON.stringify(this.listVarianAll)); }
                     }
                 } catch (e) {
-                    console.error("Gagal memuat data dari API Vercel:", e);
+                    console.error("Gagal memperbarui menu dari Vercel:", e);
                 } finally {
                     this.isLoading = false;
                 }
@@ -613,7 +614,7 @@
                 }
             },
 
-            isOpsiPilihan(grupNama, namaOpsi) {
+            isOspiPilihan(grupNama, namaOpsi) {
                 let target = this.formVarianTerpilih[grupNama];
                 if (!target) return false;
                 if (Array.isArray(target)) return target.some(o => o.namaOpsi === namaOpsi);
