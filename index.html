@@ -174,7 +174,7 @@
                             <div class="grid grid-cols-2 gap-2">
                                 <template x-for="v in dapatkanOspiVarianSesuaiGrup(grupNama)" :key="v.namaOpsi">
                                     <button type="button" @click="pilihOspiVarian(grupNama, v)"
-                                            :class="isOpsiPilihan(grupNama, v.namaOpsi) ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-50 text-slate-700 border-line hover:bg-slate-100 font-semibold'"
+                                            :class="isOspiPilihan(grupNama, v.namaOpsi) ? 'bg-slate-900 text-white font-bold shadow-2xs' : 'bg-slate-50 text-slate-700 border-line hover:bg-slate-100 font-semibold'"
                                             class="p-2.5 rounded-lg text-xs border transition text-left flex justify-between items-center w-full">
                                         <span class="truncate" x-text="v.namaOpsi"></span>
                                         <span class="text-[10px] font-mono opacity-80 shrink-0 ml-1" x-text="Number(v.harga) > 0 ? ('+Rp ' + Number(v.harga).toLocaleString('id-ID')) : ''"></span>
@@ -434,7 +434,6 @@
     <script>
     function onlineOrderApp() {
         return {
-            // URL Proxy Vercel Lengkap
             webAppUrlDb: 'https://saepos-vert.vercel.app/api/pos',
             isLoading: false,
             isSubmitting: false,
@@ -443,8 +442,18 @@
             searchQuery: '',
             kategoriFilter: 'Semua',
 
-            listProduk: [],
-            listKategori: [],
+            // Data Default agar aplikasi dapat langsung dirender instan saat pertama kali dibuka
+            listProduk: [
+                { id: '1', nama: 'Seblak', kategori: 'Makanan', hargaBase: 9000 },
+                { id: '2', nama: 'Es Biasa', kategori: 'Minuman', hargaBase: 2000 },
+                { id: '3', nama: 'Pisang goreng', kategori: 'Cemilan', hargaBase: 6000 },
+                { id: '4', nama: 'Pop Ice', kategori: 'Minuman', hargaBase: 5000 }
+            ],
+            listKategori: [
+                { nama: 'Makanan' },
+                { nama: 'Minuman' },
+                { nama: 'Cemilan' }
+            ],
             listGrupVarian: [],
             listVarianAll: [],
 
@@ -482,6 +491,7 @@
             },
 
             initApp() {
+                // 1. Tampilkan dari Cache Lokal secara instan (0 detik)
                 let savedProd = localStorage.getItem('MASTER_PRODUCTS');
                 if (savedProd) try { this.listProduk = JSON.parse(savedProd); } catch(e){}
 
@@ -494,26 +504,41 @@
                 let savedVar = localStorage.getItem('MASTER_TOPINGS');
                 if (savedVar) try { this.listVarianAll = JSON.parse(savedVar); } catch(e){}
 
+                // 2. Ambil pembaruan harga/stok terbaru di latar belakang
                 this.fetchDataFromDb();
             },
 
             async fetchDataFromDb() {
                 if (!this.webAppUrlDb) return;
-                this.isLoading = true;
+                
+                if (!this.listProduk || this.listProduk.length === 0) {
+                    this.isLoading = true;
+                }
 
                 try {
-                    // Penambahan timestamp (_t) untuk mencegah cache browser
                     const res = await fetch(`${this.webAppUrlDb}?action=getInventoryData&_t=${Date.now()}`);
                     const data = await res.json();
 
                     if (data && data.status === 'success') {
-                        if (data.produk) { this.listProduk = data.produk; localStorage.setItem('MASTER_PRODUCTS', JSON.stringify(this.listProduk)); }
-                        if (data.kategori) { this.listKategori = data.kategori; localStorage.setItem('MASTER_KATEGORI', JSON.stringify(this.listKategori)); }
-                        if (data.grupVarian) { this.listGrupVarian = data.grupVarian; localStorage.setItem('LIST_GRUP_VARIAN', JSON.stringify(this.listGrupVarian)); }
-                        if (data.varian) { this.listVarianAll = data.varian; localStorage.setItem('MASTER_TOPINGS', JSON.stringify(this.listVarianAll)); }
+                        if (data.produk && data.produk.length > 0) { 
+                            this.listProduk = data.produk; 
+                            localStorage.setItem('MASTER_PRODUCTS', JSON.stringify(this.listProduk)); 
+                        }
+                        if (data.kategori && data.kategori.length > 0) { 
+                            this.listKategori = data.kategori; 
+                            localStorage.setItem('MASTER_KATEGORI', JSON.stringify(this.listKategori)); 
+                        }
+                        if (data.grupVarian) { 
+                            this.listGrupVarian = data.grupVarian; 
+                            localStorage.setItem('LIST_GRUP_VARIAN', JSON.stringify(this.listGrupVarian)); 
+                        }
+                        if (data.varian) { 
+                            this.listVarianAll = data.varian; 
+                            localStorage.setItem('MASTER_TOPINGS', JSON.stringify(this.listVarianAll)); 
+                        }
                     }
                 } catch (e) {
-                    console.error("Gagal memperbarui menu dari Vercel:", e);
+                    console.error("Gagal sinkronisasi data dari Vercel:", e);
                 } finally {
                     this.isLoading = false;
                 }
