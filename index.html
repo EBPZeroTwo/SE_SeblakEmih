@@ -434,7 +434,8 @@
     <script>
     function onlineOrderApp() {
         return {
-            webAppUrlDb: 'https://script.google.com/macros/s/AKfycbwUNbfCpd6V9-r7Q6TGccvkIsuZZpZugWU4ulIrLYt-Z_WXPodgmiSiPf1StOw4-7W0Nw/exec',
+            // URL Proxy Vercel (Dapat diatur ke URL Domain Vercel Lengkap jika di-host lintas origin)
+            webAppUrlDb: '/api/pos',
             isLoading: false,
             isSubmitting: false,
             isDownloading: false,
@@ -496,18 +497,13 @@
                 this.fetchDataFromDb();
             },
 
-            fetchDataFromDb() {
+            async fetchDataFromDb() {
                 if (!this.webAppUrlDb) return;
                 this.isLoading = true;
 
-                const cbDb = 'onlineDb_' + Date.now();
-                const scriptDb = document.createElement('script');
-                scriptDb.src = `${this.webAppUrlDb}?action=getInventoryData&callback=${cbDb}`;
-
-                window[cbDb] = (data) => {
-                    this.isLoading = false;
-                    delete window[cbDb];
-                    if (scriptDb.parentNode) scriptDb.parentNode.removeChild(scriptDb);
+                try {
+                    const res = await fetch(`${this.webAppUrlDb}?action=getInventoryData`);
+                    const data = await res.json();
 
                     if (data && data.status === 'success') {
                         if (data.produk) { this.listProduk = data.produk; localStorage.setItem('MASTER_PRODUCTS', JSON.stringify(this.listProduk)); }
@@ -515,10 +511,11 @@
                         if (data.grupVarian) { this.listGrupVarian = data.grupVarian; localStorage.setItem('LIST_GRUP_VARIAN', JSON.stringify(this.listGrupVarian)); }
                         if (data.varian) { this.listVarianAll = data.varian; localStorage.setItem('MASTER_TOPINGS', JSON.stringify(this.listVarianAll)); }
                     }
-                };
-
-                scriptDb.onerror = () => { this.isLoading = false; };
-                document.body.appendChild(scriptDb);
+                } catch (e) {
+                    console.error("Gagal memuat data dari API Vercel:", e);
+                } finally {
+                    this.isLoading = false;
+                }
             },
 
             pilihProduk(item) {
@@ -732,9 +729,9 @@
                 this.lastOrderData = orderPayload;
 
                 try {
-                    await fetch(this.webAppUrlDb, {
+                    const res = await fetch(this.webAppUrlDb, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             action: 'saveOnlineOrder',
                             data: orderPayload
@@ -752,6 +749,7 @@
 
                 } catch (e) {
                     this.isSubmitting = false;
+                    console.error("Gagal mengirim pesanan:", e);
                     alert('Gagal mengirim pesanan. Silakan periksa koneksi internet Anda.');
                 }
             },
