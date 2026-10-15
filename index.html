@@ -436,7 +436,7 @@
     <script>
     function onlineOrderApp() {
         return {
-            webAppUrlDb: 'https://saepos-vert.vercel.app/api/pos',
+            webAppUrlDb: '/api/pos', // Menggunakan relative path ke Vercel Serverless Function Proxy
             isLoading: false,
             isSubmitting: false,
             isDownloading: false,
@@ -444,7 +444,7 @@
             searchQuery: '',
             kategoriFilter: 'Semua',
 
-            // Data Default agar aplikasi dapat langsung dirender instan saat pertama kali dibuka
+            // Data Default
             listProduk: [
                 { id: '1', nama: 'Seblak', kategori: 'Makanan', hargaBase: 9000 },
                 { id: '2', nama: 'Es Biasa', kategori: 'Minuman', hargaBase: 2000 },
@@ -493,7 +493,7 @@
             },
 
             initApp() {
-                // 1. Tampilkan dari Cache Lokal secara instan (0 detik)
+                // 1. Render Instan dari Cache
                 let savedProd = localStorage.getItem('MASTER_PRODUCTS');
                 if (savedProd) try { this.listProduk = JSON.parse(savedProd); } catch(e){}
 
@@ -506,7 +506,7 @@
                 let savedVar = localStorage.getItem('MASTER_TOPINGS');
                 if (savedVar) try { this.listVarianAll = JSON.parse(savedVar); } catch(e){}
 
-                // 2. Ambil pembaruan harga/stok terbaru di latar belakang
+                // 2. Fetch Data Terbaru
                 this.fetchDataFromDb();
             },
 
@@ -540,7 +540,7 @@
                         }
                     }
                 } catch (e) {
-                    console.error("Gagal sinkronisasi data dari Vercel:", e);
+                    console.error("Gagal sinkronisasi data dari API:", e);
                 } finally {
                     this.isLoading = false;
                 }
@@ -722,7 +722,7 @@
             hitungTotalQtyKeranjang() { return this.keranjang.reduce((acc, item) => acc + Number(item.qty || 1), 0); },
             hitungTotalHargaKeranjang() { return this.keranjang.reduce((acc, item) => acc + this.hitungTotalItem(item), 0); },
 
-            // PERBAIKAN PENGIRIMAN DATA SUPAYA SINKRON DENGAN VERCEL POS
+            // PERBAIKAN PENGIRIMAN POST AGAR MENGHINDARI PREFLIGHT CORS ERROR
             async kirimPesananOnline() {
                 if (this.keranjang.length === 0) return;
                 if (!this.formNamaPemesan.trim()) { alert('Harap isi Nama Pemesan!'); return; }
@@ -743,7 +743,6 @@
                     this.totalDenganKodeUnik = subtotal;
                 }
 
-                // Payload komprehensif agar dibaca sempurna di semua versi parser POS Kasir
                 let orderPayload = {
                     idOnline: 'ONL-' + Date.now(),
                     id: 'ONL-' + Date.now(),
@@ -766,14 +765,17 @@
                 this.lastOrderData = orderPayload;
 
                 try {
+                    // PERBAIKAN FATAL BERSAMA VERCEL: Kirim text/plain untuk menghindari CORS Preflight
                     const res = await fetch(this.webAppUrlDb, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({
                             action: 'saveOnlineOrder',
                             data: orderPayload
                         })
                     });
+
+                    const data = await res.json();
 
                     this.isSubmitting = false;
                     this.showModalKeranjang = false;
