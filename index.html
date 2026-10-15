@@ -16,6 +16,8 @@
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden select-none bg-slate-50 text-slate-900" x-data="onlineOrderApp()" x-init="initApp()">
@@ -519,7 +521,7 @@
                     const res = await fetch(`${this.webAppUrlDb}?action=getInventoryData&_t=${Date.now()}`);
                     const data = await res.json();
 
-                    if (data && data.status === 'success') {
+                    if (data && (data.status === 'success' || data.produk)) {
                         if (data.produk && data.produk.length > 0) { 
                             this.listProduk = data.produk; 
                             localStorage.setItem('MASTER_PRODUCTS', JSON.stringify(this.listProduk)); 
@@ -720,6 +722,7 @@
             hitungTotalQtyKeranjang() { return this.keranjang.reduce((acc, item) => acc + Number(item.qty || 1), 0); },
             hitungTotalHargaKeranjang() { return this.keranjang.reduce((acc, item) => acc + this.hitungTotalItem(item), 0); },
 
+            // PERBAIKAN PENGIRIMAN DATA SUPAYA SINKRON DENGAN VERCEL POS
             async kirimPesananOnline() {
                 if (this.keranjang.length === 0) return;
                 if (!this.formNamaPemesan.trim()) { alert('Harap isi Nama Pemesan!'); return; }
@@ -740,15 +743,23 @@
                     this.totalDenganKodeUnik = subtotal;
                 }
 
+                // Payload komprehensif agar dibaca sempurna di semua versi parser POS Kasir
                 let orderPayload = {
                     idOnline: 'ONL-' + Date.now(),
+                    id: 'ONL-' + Date.now(),
                     kodeTiket: kodeTiketUnik,
                     namaPemesan: this.formNamaPemesan.trim(),
+                    namaPelanggan: this.formNamaPemesan.trim(),
                     telepon: this.formTelepon.trim(),
+                    noHp: this.formTelepon.trim(),
                     metodeBayar: this.pilihanPembayaran,
+                    pembayaran: this.pilihanPembayaran,
                     waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+                    tanggal: new Date().toISOString().split('T')[0],
                     totalHarga: this.totalDenganKodeUnik,
+                    total: this.totalDenganKodeUnik,
                     kodeUnik: this.kodeUnik,
+                    status: 'Belum Bayar',
                     items: JSON.parse(JSON.stringify(this.keranjang))
                 };
 
